@@ -1,0 +1,39 @@
+#!/bin/bash
+# Ask LibreNMS for the down list. The URL and token arrive in the environment
+# from the panel, which already checked them; this checks again so a bad value
+# never becomes a curl argument. The token is a header, not part of the URL.
+
+set -euo pipefail
+
+url="${LIBRENMS_URL:-}"
+token="${LIBRENMS_TOKEN:-}"
+
+case "$url" in
+  https://*/api/v0/devices\?type=down | http://*/api/v0/devices\?type=down) ;;
+  *) echo "librenms-fetch: refused url" >&2; exit 2 ;;
+esac
+case "$url" in
+  *[@\\[:space:]]*) echo "librenms-fetch: refused url" >&2; exit 2 ;;
+esac
+if ((${#token} < 8 || ${#token} > 200)); then
+  echo "librenms-fetch: refused token" >&2
+  exit 2
+fi
+case "$token" in
+  *[!A-Za-z0-9._~+/-]*) echo "librenms-fetch: refused token" >&2; exit 2 ;;
+esac
+
+exec curl \
+  --silent \
+  --show-error \
+  --fail \
+  --location \
+  --max-redirs 2 \
+  --proto '=http,https' \
+  --proto-redir '=http,https' \
+  --max-time 15 \
+  --max-filesize 1500000 \
+  --user-agent 'omarchy-librenms/1.0' \
+  -H "Authorization: Bearer ${token}" \
+  -H "X-Auth-Token: ${token}" \
+  --url "$url"

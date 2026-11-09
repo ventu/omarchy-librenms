@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "mvolz.librenms",
+  "name": "LibreNMS",
+  "version": "1.0.0",
+  "author": "mvolz",
+  "license": "MIT",
+  "description": "Devices LibreNMS marks down, with a notification when one goes offline or comes back.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "LibreNMS",
+    "description": "Offline devices from your LibreNMS, and a notification when that changes.",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshEnabled": true,
+      "notifyEnabled": true
+    },
+    "schema": [
+      {
+        "key": "refreshEnabled",
+        "type": "boolean",
+        "label": "Background checks, once a minute",
+        "defaultValue": true
+      },
+      {
+        "key": "notifyEnabled",
+        "type": "boolean",
+        "label": "Notify when a device goes offline or comes back",
+        "defaultValue": true
+      }
+    ]
+  }
+}
