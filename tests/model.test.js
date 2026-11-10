@@ -132,6 +132,42 @@ function testFetchRefusesBadTargets() {
   assert.strictEqual(run(fetchScript, { LIBRENMS_URL: good, LIBRENMS_TOKEN: "short" }), 2)
 }
 
+// A stand-in curl on PATH records its arguments and stdin, so the test can
+// check where the token goes without a network.
+function fakeCurl(dir, status) {
+  const bin = path.join(dir, "fakebin")
+  fs.mkdirSync(bin, { recursive: true })
+  const shim = path.join(bin, "curl")
+  fs.writeFileSync(shim, [
+    "#!/bin/bash",
+    'printf "%s\\n" "$@" > "$FAKE_DIR/args"',
+    'cat > "$FAKE_DIR/stdin"',
+    'printf \'{"devices":[]}\\n' + status + '\'',
+  ].join("\n") + "\n")
+  fs.chmodSync(shim, 0o755)
+  return bin
+}
+
+function testFetchKeepsTokenOffCommandLine() {
+  const token = "s3cretTokenValue123"
+  const url = "https://nms.example/api/v0/devices?type=down"
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "librenms-fetch-"))
+  const env = (bin) => ({ LIBRENMS_URL: url, LIBRENMS_TOKEN: token, FAKE_DIR: dir, PATH: bin + ":" + process.env.PATH })
+
+  const ok = fakeCurl(dir, "200")
+  assert.strictEqual(run(fetchScript, env(ok)), 0)
+  const args = fs.readFileSync(path.join(dir, "args"), "utf8")
+  const stdin = fs.readFileSync(path.join(dir, "stdin"), "utf8")
+  assert.strictEqual(args.indexOf(token), -1, "token must not be a curl argument")
+  assert.ok(stdin.indexOf("Authorization: Bearer " + token) !== -1)
+  assert.ok(stdin.indexOf("X-Auth-Token: " + token) !== -1)
+  assert.strictEqual(/^(--location|-L|--location-trusted)$/m.test(args), false, "redirects must not be followed")
+
+  fs.rmSync(path.join(dir, "fakebin"), { recursive: true, force: true })
+  assert.strictEqual(run(fetchScript, env(fakeCurl(dir, "302"))), 47)
+  fs.rmSync(dir, { recursive: true, force: true })
+}
+
 function testSaveSecret() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "librenms-"))
   fs.mkdirSync(path.join(dir, "bin"))
@@ -153,5 +189,6 @@ testBaseAndUrls()
 testParseDownList()
 testTransitionsStayQuietOnTheFirstPoll()
 testFetchRefusesBadTargets()
+testFetchKeepsTokenOffCommandLine()
 testSaveSecret()
 console.log("librenms model tests passed")

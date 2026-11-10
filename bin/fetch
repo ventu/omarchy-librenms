@@ -1,7 +1,12 @@
 #!/bin/bash
 # Ask LibreNMS for the down list. The URL and token arrive in the environment
 # from the panel, which already checked them; this checks again so a bad value
-# never becomes a curl argument. The token is a header, not part of the URL.
+# never reaches curl. The token is a header, not part of the URL.
+#
+# The token never appears on a command line: the headers go to curl as a config
+# file on stdin, written by printf (a shell builtin, so it has no argv of its
+# own). Redirects are not followed, so the token is only ever sent to the
+# configured address; a redirect is reported as a failure instead.
 
 set -euo pipefail
 
@@ -23,17 +28,26 @@ case "$token" in
   *[!A-Za-z0-9._~+/-]*) echo "librenms-fetch: refused token" >&2; exit 2 ;;
 esac
 
-exec curl \
-  --silent \
-  --show-error \
-  --fail \
-  --location \
-  --max-redirs 2 \
-  --proto '=http,https' \
-  --proto-redir '=http,https' \
-  --max-time 15 \
-  --max-filesize 1500000 \
-  --user-agent 'omarchy-librenms/1.0' \
-  -H "Authorization: Bearer ${token}" \
-  -H "X-Auth-Token: ${token}" \
-  --url "$url"
+response="$(
+  printf 'header = "Authorization: Bearer %s"\nheader = "X-Auth-Token: %s"\n' "$token" "$token" |
+    curl \
+      --config - \
+      --silent \
+      --show-error \
+      --fail \
+      --proto '=http,https' \
+      --max-time 15 \
+      --max-filesize 1500000 \
+      --user-agent 'omarchy-librenms/1.0' \
+      --write-out '\n%{http_code}' \
+      --url "$url"
+)"
+
+status="${response##*$'\n'}"
+body="${response%$'\n'*}"
+
+case "$status" in
+  2[0-9][0-9]) printf '%s\n' "$body" ;;
+  3[0-9][0-9]) echo "librenms-fetch: refused redirect (HTTP $status)" >&2; exit 47 ;;
+  *) echo "librenms-fetch: unexpected HTTP $status" >&2; exit 22 ;;
+esac
