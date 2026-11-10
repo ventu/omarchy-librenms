@@ -209,6 +209,17 @@ function transitions(previous, devices) {
   return { ready: true, down: down, up: up, baseline: baseline }
 }
 
+// Notification text goes to omarchy-notification-send as process arguments,
+// which other local accounts may be able to read. Keep it fixed: no device
+// names, ids, counts, or up/down direction, so it reveals nothing beyond
+// "something changed". The details stay inside the panel.
+function notice(change) {
+  if (!change || !change.ready) return null
+  var changed = (change.down || []).length + (change.up || []).length
+  if (changed === 0) return null
+  return { urgency: "normal", headlineKey: "notify.headline", bodyKey: "notify.body" }
+}
+
 function maxDevices() { return MAX_DEVICES }
 
 function failureKey(exitCode) {
@@ -231,6 +242,7 @@ if (typeof exports !== "undefined") {
   exports.parseSecret = parseSecret
   exports.parseDownList = parseDownList
   exports.transitions = transitions
+  exports.notice = notice
   exports.failureKey = failureKey
   exports.maxDevices = maxDevices
 }

@@ -108,6 +108,28 @@ function testTransitionsStayQuietOnTheFirstPoll() {
   assert.strictEqual(again.down[0].name.indexOf("<"), -1)
 }
 
+function testNoticeRevealsNothingAboutDevices() {
+  const secretName = "core-sw-payroll-01"
+  const devices = [{ id: "7", name: secretName }]
+  const down = Model.transitions([], devices)
+  const up = Model.transitions(devices, [])
+  const many = Model.transitions([], [devices[0], { id: "8", name: "hr-db" }])
+  assert.strictEqual(Model.notice(Model.transitions(null, devices)), null)
+  assert.strictEqual(Model.notice(Model.transitions(devices, devices)), null)
+  const a = Model.notice(down), b = Model.notice(up), c = Model.notice(many)
+  assert.ok(a && b && c)
+  assert.deepStrictEqual(a, b)
+  assert.deepStrictEqual(a, c)
+  const strings = JSON.parse(fs.readFileSync(path.join(root, "i18n/en.json"), "utf8"))
+  const text = [a.urgency, strings[a.headlineKey], strings[a.bodyKey]].join("\n")
+  assert.strictEqual(text.indexOf(secretName), -1)
+  assert.strictEqual(text.indexOf("7"), -1)
+  assert.ok(!/%\d/.test(text))
+  assert.ok(!/offline|online/i.test(text))
+  const panel = fs.readFileSync(path.join(root, "Panel.qml"), "utf8")
+  assert.ok(!/\.name\b/.test(panel.slice(panel.indexOf("function announce"), panel.indexOf("function enqueueNote"))))
+}
+
 function run(script, env, input) {
   try {
     execFileSync(script, {
@@ -188,6 +210,7 @@ testPlainText()
 testBaseAndUrls()
 testParseDownList()
 testTransitionsStayQuietOnTheFirstPoll()
+testNoticeRevealsNothingAboutDevices()
 testFetchRefusesBadTargets()
 testFetchKeepsTokenOffCommandLine()
 testSaveSecret()

@@ -161,21 +161,9 @@ Panel {
     haveBaseline = true
   }
 
-  function fill(template, value) {
-    return template.arg(String(value == null ? "" : value).split("%").join("\uFF05"))
-  }
-
   function announce(change) {
-    if (change.down.length === 1)
-      enqueueNote("critical", strings.t("notify.downHeadline"), fill(strings.t("notify.downOne"), change.down[0].name))
-    else if (change.down.length > 1)
-      enqueueNote("critical", strings.t("notify.downHeadline"),
-        fill(strings.tn("notify.downMany", change.down.length), Commons.I18n.formatNumber(change.down.length)))
-    if (change.up.length === 1)
-      enqueueNote("normal", strings.t("notify.upHeadline"), fill(strings.t("notify.upOne"), change.up[0].name))
-    else if (change.up.length > 1)
-      enqueueNote("normal", strings.t("notify.upHeadline"),
-        fill(strings.tn("notify.upMany", change.up.length), Commons.I18n.formatNumber(change.up.length)))
+    var note = Model.notice(change)
+    if (note) enqueueNote(note.urgency, strings.t(note.headlineKey), strings.t(note.bodyKey))
   }
 
   function enqueueNote(urgency, headline, description) {
