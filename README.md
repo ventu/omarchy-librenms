@@ -1,8 +1,7 @@
 # LibreNMS for Omarchy
-
-A bar plugin for devices LibreNMS marks down. After you save the server address and an API token, it checks once a minute and sends a notification when a device goes offline or comes back. The notification only says that device status changed; device names and details stay in the panel, because notification text is passed to `omarchy-notification-send` as command-line arguments that other local accounts may be able to read. The first check stays quiet, so devices that are already down do not each raise a notification.
-
-The address and token are written to `secret.json` next to the plugin, mode 600. That file is not part of this repository.
+<img width="483" height="716" alt="preview" src="https://github.com/user-attachments/assets/c7288f63-a666-4d6b-b697-4d4c3789ff6c" />
+<p></p>
+A bar plugin for monitoring devices in LibreNMS. After you save the server address and an API token, it checks once a minute and displays a small warning if a device is down.
 
 ## Install
 
